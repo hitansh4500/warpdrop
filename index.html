@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WarpDrop — OTP Round Clipboard</title>
+  <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #131a26;
+      --panel-2: #1a2333;
+      --border: #273248;
+      --text: #eef2ff;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+      --green: #10b981;
+      --red: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+    }
+    .brand {
+      font-weight: 700;
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand span {
+      background: linear-gradient(135deg, #60a5fa, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+    }
+    .dot.online { background: var(--green); }
+
+    main {
+      max-width: 1040px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 18px 16px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .top-grid {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 780px) {
+      .top-grid { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card h2 {
+      margin: 0;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .subtext {
+      margin: 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    textarea, input[type="text"] {
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+      outline: none;
+    }
+    textarea:focus, input[type="text"]:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 72px; }
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      text-align: center;
+      background: rgba(26, 35, 51, 0.45);
+      cursor: pointer;
+      font-size: 0.88rem;
+      color: var(--muted);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--text);
+    }
+    .staged-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .staged-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+    }
+    .staged-chip button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      padding: 0;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .staged-chip button:hover { color: var(--red); }
+    .row-between {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.83rem;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    button {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 14px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover { background: #233046; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    button.primary:hover { background: var(--accent-hover); }
+    button.danger {
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    .otp-input {
+      font-size: 1.5rem !important;
+      letter-spacing: 0.25em;
+      text-align: center;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.92rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .rounds-feed { display: flex; flex-direction: column; gap: 14px; }
+    .round-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .round-card.latest {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+    }
+    .round-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .round-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+    }
+    .tag {
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.16);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+    }
+    .tag.done {
+      background: rgba(16, 185, 129, 0.16);
+      color: #6ee7b7;
+      border-color: rgba(16, 185, 129, 0.35);
+    }
+    .tag.expired {
+      background: rgba(239, 68, 68, 0.14);
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+    .otp-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .otp-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 1.7rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      color: #60a5fa;
+    }
+    .otp-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .text-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .text-content {
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.45;
+      font-size: 0.94rem;
+    }
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .file-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .file-title { font-weight: 600; font-size: 0.9rem; word-break: break-all; }
+    .file-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+    .progress-bar {
+      height: 6px;
+      background: var(--panel-2);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+    }
+    .media-preview {
+      width: 100%;
+      max-height: 240px;
+      object-fit: contain;
+      border-radius: 8px;
+      background: #000;
+    }
+    a.dl-btn {
+      display: inline-block;
+      text-align: center;
+      text-decoration: none;
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+    a.dl-btn:hover { background: #233046; }
+    .empty-msg {
+      text-align: center;
+      color: var(--muted);
+      padding: 28px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      font-size: 0.92rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">⚡ <span>WarpDrop</span> Online Clipboard</div>
+    <div class="status-pill">
+      <span id="netDot" class="dot"></span>
+      <span id="netText">Connecting P2P network...</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="top-grid">
+      <!-- SEND ROUND -->
+      <section class="card">
+        <h2>
+          <span>📤 Send Round</span>
+          <span class="subtext">Generates fresh OTP</span>
+        </h2>
+        <textarea id="sendTextInput" placeholder="Paste text, links, or code for this round..."></textarea>
+        <div id="dropzone" class="dropzone">
+          <strong>Drop files, images, or videos here</strong><br />
+          or click to browse • Ctrl+V / Cmd+V to paste images/files
+          <input id="fileInput" type="file" multiple hidden />
+        </div>
+        <div id="stagedList" class="staged-list"></div>
+        <div class="row-between">
+          <label class="checkbox-label">
+            <input id="oneTimeCheck" type="checkbox" checked />
+            One-time OTP (auto-expire after download)
+          </label>
+          <button id="createRoundBtn" class="primary">Create Round OTP</button>
+        </div>
+      </section>
+
+      <!-- RECEIVE ROUND -->
+      <section class="card">
+        <h2>
+          <span>📥 Receive Round</span>
+          <span class="subtext">Enter 6-digit OTP</span>
+        </h2>
+        <p class="subtext">
+          Enter the round's OTP to stream its exact text, files, images, or videos directly from the sender.
+        </p>
+        <input id="otpInput" class="otp-input" type="text" inputmode="numeric" maxlength="7" placeholder="000000" />
+        <button id="claimBtn" class="primary">Get Files for Round</button>
+        <div id="claimError" class="subtext" style="color: #fca5a5;"></div>
+      </section>
+    </div>
+
+    <div class="section-title">
+      <span>Rounds (Newest Always at Top)</span>
+      <span id="roundCountLabel">0 rounds</span>
+    </div>
+
+    <div id="roundsFeed" class="rounds-feed">
+      <div id="emptyMsg" class="empty-msg">
+        No rounds yet. Create a round on the left to get an OTP, or enter an OTP on the right to receive files.
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const PEER_PREFIX = 'warpdrop-round-';
+    const CHUNK_SIZE = 64 * 1024;
+    const MAX_BUFFERED = 4 * 1024 * 1024;
+    const LOW_BUFFERED = 1 * 1024 * 1024;
+    const ICE_CONFIG = {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]
+    };
+
+    const netDot = document.getElementById('netDot');
+    const netText = document.getElementById('netText');
+    const sendTextInput = document.getElementById('sendTextInput');
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const stagedList = document.getElementById('stagedList');
+    const oneTimeCheck = document.getElementById('oneTimeCheck');
+    const createRoundBtn = document.getElementById('createRoundBtn');
+    const otpInput = document.getElementById('otpInput');
+    const claimBtn = document.getElementById('claimBtn');
+    const claimError = document.getElementById('claimError');
+    const roundsFeed = document.getElementById('roundsFeed');
+    const emptyMsg = document.getElementById('emptyMsg');
+    const roundCountLabel = document.getElementById('roundCountLabel');
+
+    let roundCounter = 0;
+    let stagedFiles = [];
+    let receiverPeer = null;
+    let pendingClaimOtp = null;
+
+    const outgoingRounds = new Map();
+    const incomingRounds = new Map();
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 2) + ' ' + units[i];
+    }
+
+    function formatOtp(otp) {
+      return otp.length === 6 ? otp.slice(0, 3) + ' ' + otp.slice(3) : otp;
+    }
+
+    function generateOtp() {
+      return String(Math.floor(100000 + Math.random() * 900000));
+    }
+
+    function prependRoundCard(card) {
+      if (emptyMsg) emptyMsg.style.display = 'none';
+      const prevLatest = roundsFeed.querySelector('.round-card.latest');
+      if (prevLatest) prevLatest.classList.remove('latest');
+      card.classList.add('latest');
+      roundsFeed.prepend(card);
+      roundCountLabel.textContent = roundCounter + (roundCounter === 1 ? ' round' : ' rounds');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Initialize receiver PeerJS client
+    function initReceiverPeer() {
+      if (typeof Peer === 'undefined') {
+        netDot.classList.remove('online');
+        netText.textContent = 'Offline — internet needed for OTP pairing';
+        return;
+      }
+
+      receiverPeer = new Peer({ config: ICE_CONFIG });
+
+      receiverPeer.on('open', () => {
+        netDot.classList.add('online');
+        netText.textContent = 'P2P Network Ready';
+
+        const urlOtp = new URLSearchParams(location.search).get('otp');
+        if (urlOtp && /^\d{6}$/.test(urlOtp.trim()) && !incomingRounds.has(urlOtp.trim())) {
+          otpInput.value = urlOtp.trim();
+          claimRound(urlOtp.trim());
+        }
+      });
+
+      receiverPeer.on('error', (err) => {
+        if (err.type === 'peer-unavailable' && pendingClaimOtp) {
+          const failedOtp = pendingClaimOtp;
+          pendingClaimOtp = null;
+          claimError.textContent = 'Invalid, expired, or offline OTP (' + formatOtp(failedOtp) + ').';
+          const r = incomingRounds.get(failedOtp);
+          if (r) {
+            r.ui.statusTag.textContent = 'OTP not found / expired';
+            r.ui.statusTag.className = 'tag expired';
+            incomingRounds.delete(failedOtp);
+          }
+        } else if (err.type === 'network' || err.type === 'server-error') {
+          netDot.classList.remove('online');
+          netText.textContent = 'Reconnecting...';
+        }
+      });
+
+      receiverPeer.on('disconnected', () => {
+        netDot.classList.remove('online');
+        netText.textContent = 'Disconnected — reconnecting...';
+        setTimeout(() => {
+          if (receiverPeer && !receiverPeer.destroyed) receiverPeer.reconnect();
+        }, 1500);
+      });
+    }
+
+    // Staged files
+    function addStagedFiles(fileList) {
+      for (const f of fileList) stagedFiles.push(f);
+      renderStagedFiles();
+    }
+
+    function renderStagedFiles() {
+      stagedList.innerHTML = '';
+      stagedFiles.forEach((file, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'staged-chip';
+
+        const name = document.createElement('span');
+        name.textContent = file.name + ' (' + formatBytes(file.size) + ')';
+
+        const rm = document.createElement('button');
+        rm.textContent = '×';
+        rm.title = 'Remove';
+        rm.onclick = () => {
+          stagedFiles.splice(idx, 1);
+          renderStagedFiles();
+        };
+
+        chip.append(name, rm);
+        stagedList.appendChild(chip);
+      });
+    }
+
+    // Create Outgoing Round
+    function createRound() {
+      if (typeof Peer === 'undefined') {
+        alert('PeerJS failed to load. Please check your internet connection and reload.');
+        return;
+      }
+
+      const text = sendTextInput.value.trim();
+      const files = stagedFiles.slice();
+      if (!text && files.length === 0) {
+        alert('Add text or attach at least one file, image, or video.');
+        return;
+      }
+
+      sendTextInput.value = '';
+      stagedFiles = [];
+      renderStagedFiles();
+
+      roundCounter++;
+      const card = document.createElement('div');
+      card.className = 'round-card';
+
+      const header = document.createElement('div');
+      header.className = 'round-header';
+
+      const badge = document.createElement('div');
+      badge.className = 'round-badge';
+      badge.textContent = '📤 Round #' + roundCounter + ' (Sending)';
+
+      const statusTag = document.createElement('span');
+      statusTag.className = 'tag';
+      statusTag.textContent = 'Registering OTP...';
+      header.append(badge, statusTag);
+
+      const banner = document.createElement('div');
+      banner.className = 'otp-banner';
+
+      const otpDisplay = document.createElement('div');
+      const lbl = document.createElement('div');
+      lbl.className = 'subtext';
+      const oneTime = oneTimeCheck.checked;
+      lbl.textContent = oneTime ? 'One-Time Round OTP' : 'Multi-Use Round OTP';
+      const codeEl = document.createElement('div');
+      codeEl.className = 'otp-code';
+      codeEl.textContent = '------';
+      otpDisplay.append(lbl, codeEl);
+
+      const otpActions = document.createElement('div');
+      otpActions.className = 'otp-actions';
+
+      const copyOtpBtn = document.createElement('button');
+      copyOtpBtn.textContent = 'Copy OTP';
+      copyOtpBtn.disabled = true;
+
+      const copyLinkBtn = document.createElement('button');
+      copyLinkBtn.textContent = 'Copy Link';
+      copyLinkBtn.disabled = true;
+
+      const closeBtn = document.createElement('button');
+      closeBtn.className = 'danger';
+      closeBtn.textContent = 'Expire OTP';
+      closeBtn.disabled = true;
+
+      otpActions.append(copyOtpBtn, copyLinkBtn, closeBtn);
+      banner.append(otpDisplay, otpActions);
+      card.append(header, banner);
+
+      if (text) {
+        const tBox = document.createElement('div');
+        tBox.className = 'text-box';
+        const t = document.createElement('div');
+        t.className = 'text-content';
+        t.textContent = text;
+        tBox.appendChild(t);
+        card.appendChild(tBox);
+      }
+
+      const itemUIs = [];
+      if (files.length > 0) {
+        const grid = document.createElement('div');
+        grid.className = 'items-grid';
+        for (const f of files) {
+          const item = createFileBox(f.name, f.size);
+          grid.appendChild(item.el);
+          itemUIs.push(item);
+        }
+        card.appendChild(grid);
+      }
+
+      prependRoundCard(card);
+
+      const round = {
+        otp: null,
+        peer: null,
+        text,
+        files,
+        oneTime,
+        claimed: false,
+        ui: { statusTag, codeEl, copyOtpBtn, copyLinkBtn, closeBtn, itemUIs }
+      };
+
+      bindRoundOtpPeer(round);
+    }
+
+    function bindRoundOtpPeer(round) {
+      const otp = generateOtp();
+      const peer = new Peer(PEER_PREFIX + otp, { config: ICE_CONFIG });
+      round.otp = otp;
+      round.peer = peer;
+
+      peer.on('open', () => {
+        outgoingRounds.set(otp, round);
+        round.ui.codeEl.textContent = formatOtp(otp);
+        round.ui.statusTag.textContent = 'Waiting for receiver...';
+        round.ui.copyOtpBtn.disabled = false;
+        round.ui.copyLinkBtn.disabled = false;
+        round.ui.closeBtn.disabled = false;
+
+        round.ui.copyOtpBtn.onclick = () => {
+          navigator.clipboard.writeText(otp);
+          round.ui.copyOtpBtn.textContent = 'Copied!';
+          setTimeout(() => (round.ui.copyOtpBtn.textContent = 'Copy OTP'), 1200);
+        };
+
+        round.ui.copyLinkBtn.onclick = () => {
+          if (location.protocol === 'file:') {
+            navigator.clipboard.writeText(otp);
+            round.ui.copyLinkBtn.textContent = 'OTP Copied!';
+            setTimeout(() => (round.ui.copyLinkBtn.textContent = 'Copy Link'), 1200);
+            return;
+          }
+          const u = new URL(location.href);
+          u.searchParams.set('otp', otp);
+          navigator.clipboard.writeText(u.toString());
+          round.ui.copyLinkBtn.textContent = 'Link Copied!';
+          setTimeout(() => (round.ui.copyLinkBtn.textContent = 'Copy Link'), 1200);
+        };
+
+        round.ui.closeBtn.onclick = () => expireOutgoingRound(round, 'OTP Expired');
+      });
+
+      peer.on('error', (err) => {
+        if (err.type === 'unavailable-id') {
+          peer.destroy();
+          bindRoundOtpPeer(round); // Retry with a fresh 6-digit OTP
+        } else {
+          round.ui.statusTag.textContent = 'Error: ' + err.type;
+          round.ui.statusTag.className = 'tag expired';
+        }
+      });
+
+      peer.on('connection', (conn) => {
+        if (round.oneTime && round.claimed) {
+          conn.close();
+          return;
+        }
+        if (round.oneTime) round.claimed = true;
+
+        round.ui.statusTag.textContent = 'Receiver connected • Streaming...';
+
+        conn.on('open', () => {
+          if (conn.dataChannel) {
+            conn.dataChannel.binaryType = 'arraybuffer';
+            conn.dataChannel.bufferedAmountLowThreshold = LOW_BUFFERED;
+          }
+          streamOutgoingRound(round, conn);
+        });
+
+        conn.on('data', (raw) => {
+          if (typeof raw === 'string') {
+            try {
+              const msg = JSON.parse(raw);
+              if (msg.type === 'ack-complete' && msg.otp === round.otp) {
+                if (round.oneTime) {
+                  expireOutgoingRound(round, '✅ Delivered (OTP Expired)');
+                } else {
+                  round.ui.statusTag.textContent = '✅ Delivered (Ready for next)';
+                  round.ui.statusTag.className = 'tag done';
+                }
+              }
+            } catch {}
+          }
+        });
+
+        conn.on('close', () => {
+          if (round.oneTime && round.ui.statusTag.textContent.includes('Streaming')) {
+            round.claimed = false;
+            round.ui.statusTag.textContent = 'Receiver left • Waiting again...';
+          }
+        });
+      });
+    }
+
+    function expireOutgoingRound(round, label) {
+      outgoingRounds.delete(round.otp);
+      try { round.peer?.destroy(); } catch {}
+      round.ui.statusTag.textContent = label;
+      round.ui.statusTag.className = 'tag done';
+      round.ui.closeBtn.disabled = true;
+    }
+
+    async function streamOutgoingRound(round, conn) {
+      const dc = conn.dataChannel;
+
+      conn.send(JSON.stringify({
+        type: 'round-manifest',
+        otp: round.otp,
+        text: round.text,
+        files: round.files.map((f) => ({
+          name: f.name,
+          size: f.size,
+          mime: f.type || 'application/octet-stream'
+        }))
+      }));
+
+      for (let i = 0; i < round.files.length; i++) {
+        const file = round.files[i];
+        const ui = round.ui.itemUIs[i];
+        const startTime = performance.now();
+
+        conn.send(JSON.stringify({
+          type: 'file-start',
+          index: i,
+          name: file.name,
+          size: file.size,
+          mime: file.type || 'application/octet-stream'
+        }));
+
+        let offset = 0;
+        while (offset < file.size) {
+          if (!conn.open) return;
+
+          if (dc && dc.bufferedAmount > MAX_BUFFERED) {
+            await new Promise((resolve) => {
+              const done = () => {
+                dc.removeEventListener('bufferedamountlow', done);
+                resolve();
+              };
+              dc.addEventListener('bufferedamountlow', done);
+              conn.once('close', done);
+            });
+          }
+          if (!conn.open) return;
+
+          const buffer = await file.slice(offset, offset + CHUNK_SIZE).arrayBuffer();
+          conn.send(buffer);
+          offset += buffer.byteLength;
+
+          const pct = file.size > 0 ? (offset / file.size) * 100 : 100;
+          const elapsed = Math.max((performance.now() - startTime) / 1000, 0.001);
+          updateFileBoxProgress(ui, pct, formatBytes(offset / elapsed) + '/s');
+        }
+
+        conn.send(JSON.stringify({ type: 'file-end', index: i }));
+        const elapsed = Math.max((performance.now() - startTime) / 1000, 0.001);
+        updateFileBoxProgress(ui, 100, 'Sent • ' + formatBytes(file.size / elapsed) + '/s');
+      }
+
+      if (conn.open) {
+        conn.send(JSON.stringify({ type: 'round-complete', otp: round.otp }));
+        round.ui.statusTag.textContent = '✅ Delivered';
+        round.ui.statusTag.className = 'tag done';
+      }
+    }
+
+    // Claim Incoming Round
+    function claimRound(rawOtp) {
+      if (!receiverPeer || !receiverPeer.open) {
+        claimError.textContent = 'Still connecting to P2P network, try again in a second...';
+        return;
+      }
+
+      const otp = (rawOtp || otpInput.value).replace(/\s+/g, '');
+      if (!/^\d{6}$/.test(otp)) {
+        claimError.textContent = 'Please enter a valid 6-digit OTP.';
+        return;
+      }
+      if (incomingRounds.has(otp)) {
+        claimError.textContent = 'You already claimed this round.';
+        return;
+      }
+
+      claimError.textContent = '';
+      pendingClaimOtp = otp;
+
+      roundCounter++;
+      const card = document.createElement('div');
+      card.className = 'round-card';
+
+      const header = document.createElement('div');
+      header.className = 'round-header';
+
+      const badge = document.createElement('div');
+      badge.className = 'round-badge';
+      badge.textContent = '📥 Round #' + roundCounter + ' • OTP ' + formatOtp(otp);
+
+      const statusTag = document.createElement('span');
+      statusTag.className = 'tag';
+      statusTag.textContent = 'Connecting P2P...';
+      header.append(badge, statusTag);
+
+      const contentSlot = document.createElement('div');
+      contentSlot.style.display = 'flex';
+      contentSlot.style.flexDirection = 'column';
+      contentSlot.style.gap = '10px';
+
+      card.append(header, contentSlot);
+      prependRoundCard(card);
+
+      const r = {
+        otp,
+        roundNum: roundCounter,
+        ui: { statusTag, contentSlot },
+        itemUIs: [],
+        incomingFile: null,
+        dlUrls: []
+      };
+      incomingRounds.set(otp, r);
+      otpInput.value = '';
+
+      const conn = receiverPeer.connect(PEER_PREFIX + otp, {
+        reliable: true,
+        serialization: 'raw'
+      });
+
+      conn.on('open', () => {
+        if (pendingClaimOtp === otp) pendingClaimOtp = null;
+        if (conn.dataChannel) conn.dataChannel.binaryType = 'arraybuffer';
+        r.ui.statusTag.textContent = 'P2P Connected • Receiving...';
+      });
+
+      conn.on('data', (data) => {
+        if (typeof data === 'string') {
+          const msg = JSON.parse(data);
+
+          if (msg.type === 'round-manifest') {
+            if (msg.otp !== otp) {
+              r.ui.statusTag.textContent = 'OTP mismatch rejected!';
+              r.ui.statusTag.className = 'tag expired';
+              conn.close();
+              return;
+            }
+
+            if (msg.text) {
+              const tBox = document.createElement('div');
+              tBox.className = 'text-box';
+              const t = document.createElement('div');
+              t.className = 'text-content';
+              t.textContent = msg.text;
+
+              const copyBtn = document.createElement('button');
+              copyBtn.textContent = '📋 Copy Text';
+              copyBtn.style.alignSelf = 'flex-start';
+              copyBtn.onclick = () => {
+                navigator.clipboard.writeText(msg.text);
+                copyBtn.textContent = '✅ Copied!';
+                setTimeout(() => (copyBtn.textContent = '📋 Copy Text'), 1200);
+              };
+              tBox.append(t, copyBtn);
+              r.ui.contentSlot.appendChild(tBox);
+            }
+
+            if (msg.files && msg.files.length > 0) {
+              const grid = document.createElement('div');
+              grid.className = 'items-grid';
+              for (const f of msg.files) {
+                const box = createFileBox(f.name, f.size);
+                grid.appendChild(box.el);
+                r.itemUIs.push(box);
+              }
+              r.ui.contentSlot.appendChild(grid);
+            }
+          } else if (msg.type === 'file-start') {
+            r.incomingFile = {
+              index: msg.index,
+              name: msg.name,
+              size: msg.size,
+              mime: msg.mime,
+              chunks: [],
+              received: 0,
+              startTime: performance.now()
+            };
+          } else if (msg.type === 'file-end' && r.incomingFile) {
+            const f = r.incomingFile;
+            const ui = r.itemUIs[f.index];
+            const blob = new Blob(f.chunks, { type: f.mime || 'application/octet-stream' });
+            const url = URL.createObjectURL(blob);
+            r.dlUrls.push({ url, name: f.name });
+
+            const elapsed = Math.max((performance.now() - f.startTime) / 1000, 0.001);
+            finalizeIncomingFileBox(ui, url, f.name, f.mime, formatBytes(f.size / elapsed) + '/s');
+            r.incomingFile = null;
+          } else if (msg.type === 'round-complete' && msg.otp === otp) {
+            r.ui.statusTag.textContent = '✅ Verified & Received';
+            r.ui.statusTag.className = 'tag done';
+
+            if (r.dlUrls.length > 1) {
+              const dlAllBtn = document.createElement('button');
+              dlAllBtn.className = 'primary';
+              dlAllBtn.textContent = '⬇ Download All (' + r.dlUrls.length + ' files)';
+              dlAllBtn.style.alignSelf = 'flex-start';
+              dlAllBtn.onclick = () => {
+                r.dlUrls.forEach((item, idx) => {
+                  setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.href = item.url;
+                    a.download = item.name;
+                    a.click();
+                  }, idx * 200);
+                });
+              };
+              r.ui.contentSlot.appendChild(dlAllBtn);
+            }
+
+            conn.send(JSON.stringify({ type: 'ack-complete', otp }));
+          }
+        } else if (r.incomingFile) {
+          const f = r.incomingFile;
+          f.chunks.push(data);
+          f.received += data.byteLength ?? data.size ?? 0;
+          const pct = f.size > 0 ? Math.min(100, (f.received / f.size) * 100) : 100;
+          const elapsed = Math.max((performance.now() - f.startTime) / 1000, 0.001);
+          updateFileBoxProgress(r.itemUIs[f.index], pct, formatBytes(f.received / elapsed) + '/s');
+        }
+      });
+    }
+
+    // Shared File Box UI
+    function createFileBox(name, size) {
+      const el = document.createElement('div');
+      el.className = 'file-item';
+
+      const title = document.createElement('div');
+      title.className = 'file-title';
+      title.textContent = name;
+
+      const meta = document.createElement('div');
+      meta.className = 'file-meta';
+      const sizeSpan = document.createElement('span');
+      sizeSpan.textContent = formatBytes(size);
+      const speedSpan = document.createElement('span');
+      speedSpan.textContent = 'Queued';
+      meta.append(sizeSpan, speedSpan);
+
+      const bar = document.createElement('div');
+      bar.className = 'progress-bar';
+      const fill = document.createElement('div');
+      fill.className = 'progress-fill';
+      bar.appendChild(fill);
+
+      const previewSlot = document.createElement('div');
+      const actionSlot = document.createElement('div');
+
+      el.append(title, meta, bar, previewSlot, actionSlot);
+      return { el, speedSpan, fill, previewSlot, actionSlot };
+    }
+
+    function updateFileBoxProgress(ui, pct, label) {
+      if (!ui) return;
+      ui.fill.style.width = pct.toFixed(1) + '%';
+      ui.speedSpan.textContent = pct.toFixed(0) + '% • ' + label;
+    }
+
+    function finalizeIncomingFileBox(ui, url, name, mime, label) {
+      if (!ui) return;
+      ui.fill.style.width = '100%';
+      ui.speedSpan.textContent = 'Ready • ' + label;
+
+      if (mime.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = url;
+        img.className = 'media-preview';
+        img.alt = name;
+        ui.previewSlot.appendChild(img);
+      } else if (mime.startsWith('video/')) {
+        const video = document.createElement('video');
+        video.src = url;
+        video.controls = true;
+        video.playsInline = true;
+        video.className = 'media-preview';
+        ui.previewSlot.appendChild(video);
+      }
+
+      const a = document.createElement('a');
+      a.className = 'dl-btn';
+      a.href = url;
+      a.download = name;
+      a.textContent = '⬇ Download';
+      ui.actionSlot.appendChild(a);
+    }
+
+    // Event Listeners
+    createRoundBtn.onclick = createRound;
+    claimBtn.onclick = () => claimRound();
+    otpInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') claimRound();
+    });
+
+    dropzone.onclick = () => fileInput.click();
+    fileInput.onchange = () => {
+      if (fileInput.files.length > 0) {
+        addStagedFiles(fileInput.files);
+        fileInput.value = '';
+      }
+    };
+
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => e.preventDefault());
+
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) addStagedFiles(e.dataTransfer.files);
+    });
+
+    window.addEventListener('paste', (e) => {
+      const files = [];
+      for (const item of e.clipboardData?.items || []) {
+        if (item.kind === 'file') {
+          const f = item.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+      if (files.length > 0) {
+        e.preventDefault();
+        addStagedFiles(files);
+      }
+    });
+
+    initReceiverPeer();
+  </script>
+</body>
+</html>
