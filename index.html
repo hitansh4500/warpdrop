@@ -3,356 +3,655 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WarpDrop — OTP Round Clipboard</title>
+  <title>WarpDrop — Instant P2P OTP Clipboard</title>
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
   <style>
     :root {
-      --bg: #0b0f17;
-      --panel: #131a26;
-      --panel-2: #1a2333;
-      --border: #273248;
-      --text: #eef2ff;
+      --bg: #070a10;
+      --bg-glow: radial-gradient(circle at 50% -10%, rgba(59, 130, 246, 0.14), transparent 55%);
+      --panel: rgba(15, 21, 33, 0.85);
+      --panel-solid: #0f1521;
+      --panel-2: #161f30;
+      --border: rgba(148, 163, 184, 0.14);
+      --border-hover: rgba(148, 163, 184, 0.28);
+      --text: #f1f5f9;
       --muted: #94a3b8;
       --accent: #3b82f6;
       --accent-hover: #2563eb;
+      --accent-glow: rgba(59, 130, 246, 0.28);
       --green: #10b981;
+      --amber: #f59e0b;
       --red: #ef4444;
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
+      background-image: var(--bg-glow);
       color: var(--text);
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
+      -webkit-font-smoothing: antialiased;
     }
+
     header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 14px 20px;
-      background: var(--panel);
+      padding: 14px 24px;
+      background: rgba(7, 10, 16, 0.82);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
     }
+
     .brand {
-      font-weight: 700;
+      font-weight: 800;
       font-size: 1.15rem;
+      letter-spacing: -0.02em;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
+
+    .brand-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #3b82f6, #10b981);
+      display: grid;
+      place-items: center;
+      font-size: 0.95rem;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+    }
+
     .brand span {
-      background: linear-gradient(135deg, #60a5fa, #34d399);
+      background: linear-gradient(135deg, #f8fafc 30%, #93c5fd);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
+
     .status-pill {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 0.82rem;
-      padding: 6px 12px;
+      gap: 8px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 6px 13px;
       border-radius: 999px;
       background: var(--panel-2);
       border: 1px solid var(--border);
       color: var(--muted);
     }
+
     .dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       background: var(--red);
+      transition: background 0.25s, box-shadow 0.25s;
     }
-    .dot.online { background: var(--green); }
+
+    .dot.online {
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.65);
+    }
 
     main {
-      max-width: 1040px;
+      max-width: 1060px;
       width: 100%;
       margin: 0 auto;
-      padding: 18px 16px 36px;
+      padding: 24px 18px 48px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 24px;
     }
+
     .top-grid {
       display: grid;
-      grid-template-columns: 1.3fr 1fr;
-      gap: 16px;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 18px;
     }
-    @media (max-width: 780px) {
+
+    @media (max-width: 820px) {
       .top-grid { grid-template-columns: 1fr; }
     }
+
     .card {
       background: var(--panel);
+      backdrop-filter: blur(10px);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px;
+      border-radius: 16px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+      transition: border-color 0.2s;
     }
-    .card h2 {
-      margin: 0;
-      font-size: 1rem;
+
+    .card:hover {
+      border-color: var(--border-hover);
+    }
+
+    .card-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
     }
+
+    .card h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .badge-pill {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.12);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.24);
+    }
+
     .subtext {
       margin: 0;
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       color: var(--muted);
+      line-height: 1.45;
     }
-    textarea, input[type="text"] {
+
+    textarea {
       width: 100%;
-      background: var(--bg);
+      background: rgba(7, 10, 16, 0.7);
       color: var(--text);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 12px;
+      border-radius: 12px;
+      padding: 12px 14px;
       font: inherit;
+      font-size: 0.92rem;
       outline: none;
+      resize: vertical;
+      min-height: 82px;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    textarea:focus, input[type="text"]:focus { border-color: var(--accent); }
-    textarea { resize: vertical; min-height: 72px; }
-    .dropzone {
-      border: 2px dashed var(--border);
-      border-radius: 10px;
-      padding: 14px;
-      text-align: center;
-      background: rgba(26, 35, 51, 0.45);
-      cursor: pointer;
-      font-size: 0.88rem;
-      color: var(--muted);
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .dropzone.dragover {
+
+    textarea:focus {
       border-color: var(--accent);
-      background: rgba(59, 130, 246, 0.12);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .dropzone {
+      border: 1.5px dashed rgba(148, 163, 184, 0.28);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      background: rgba(22, 31, 48, 0.35);
+      cursor: pointer;
+      font-size: 0.86rem;
+      color: var(--muted);
+      transition: all 0.18s ease;
+    }
+
+    .dropzone strong {
+      color: var(--text);
+      display: block;
+      margin-bottom: 3px;
+      font-size: 0.9rem;
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.1);
       color: var(--text);
     }
-    .staged-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .staged-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
     .staged-chip {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
       background: var(--panel-2);
       border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 4px 10px;
+      border-radius: 8px;
+      padding: 5px 10px;
       font-size: 0.8rem;
+      max-width: 100%;
     }
+
+    .staged-chip span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .staged-chip button {
       background: none;
       border: none;
       color: var(--muted);
-      padding: 0;
+      padding: 0 2px;
       cursor: pointer;
-      font-size: 0.9rem;
+      font-size: 1rem;
+      line-height: 1;
     }
+
     .staged-chip button:hover { color: var(--red); }
+
     .row-between {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
+      gap: 12px;
       flex-wrap: wrap;
+      margin-top: auto;
     }
+
     .checkbox-label {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 0.83rem;
+      gap: 7px;
+      font-size: 0.82rem;
       color: var(--muted);
       cursor: pointer;
+      user-select: none;
     }
+
+    .checkbox-label input {
+      accent-color: var(--accent);
+      width: 15px;
+      height: 15px;
+      cursor: pointer;
+    }
+
     button {
       background: var(--panel-2);
       color: var(--text);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 9px 14px;
+      border-radius: 10px;
+      padding: 9px 15px;
       font: inherit;
+      font-size: 0.86rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: all 0.15s ease;
     }
-    button:hover { background: #233046; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    button:hover:not(:disabled) {
+      background: #1f2b42;
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
     button.primary {
-      background: var(--accent);
-      border-color: var(--accent);
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border-color: rgba(96, 165, 250, 0.4);
       color: #fff;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
     }
-    button.primary:hover { background: var(--accent-hover); }
+
+    button.primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      box-shadow: 0 6px 18px rgba(37, 99, 235, 0.42);
+    }
+
     button.danger {
-      border-color: rgba(239, 68, 68, 0.4);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.08);
+    }
+
+    button.danger:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.16);
+    }
+
+    /* 6-Box OTP Input */
+    .otp-boxes {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin: 4px 0;
+    }
+
+    .otp-digit {
+      width: 100%;
+      aspect-ratio: 1 / 1.12;
+      max-height: 58px;
+      background: rgba(7, 10, 16, 0.8);
+      border: 1.5px solid var(--border);
+      border-radius: 11px;
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 1.45rem;
+      font-weight: 800;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+    }
+
+    .otp-digit:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+      transform: translateY(-1px);
+    }
+
+    .error-msg {
+      min-height: 18px;
+      font-size: 0.82rem;
       color: #fca5a5;
     }
-    .otp-input {
-      font-size: 1.5rem !important;
-      letter-spacing: 0.25em;
-      text-align: center;
-      font-weight: 700;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    }
+
     .section-title {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.92rem;
+      font-size: 0.78rem;
+      font-weight: 700;
       color: var(--muted);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
+      padding: 0 4px;
     }
-    .rounds-feed { display: flex; flex-direction: column; gap: 14px; }
+
+    .rounds-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
     .round-card {
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 16px;
+      border-radius: 16px;
+      padding: 18px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 14px;
+      animation: slideIn 0.22s ease-out;
     }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .round-card.latest {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+      border-color: rgba(59, 130, 246, 0.5);
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.18), 0 12px 28px rgba(0, 0, 0, 0.3);
     }
+
     .round-header {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      padding-bottom: 10px;
+      padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
     }
+
     .round-badge {
       display: inline-flex;
       align-items: center;
       gap: 8px;
       font-weight: 700;
+      font-size: 0.95rem;
     }
+
     .tag {
-      font-size: 0.72rem;
-      padding: 3px 8px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 4px 10px;
       border-radius: 999px;
-      background: rgba(59, 130, 246, 0.16);
+      background: rgba(59, 130, 246, 0.14);
       color: #93c5fd;
-      border: 1px solid rgba(59, 130, 246, 0.35);
+      border: 1px solid rgba(59, 130, 246, 0.3);
     }
+
     .tag.done {
-      background: rgba(16, 185, 129, 0.16);
+      background: rgba(16, 185, 129, 0.14);
       color: #6ee7b7;
-      border-color: rgba(16, 185, 129, 0.35);
+      border-color: rgba(16, 185, 129, 0.3);
     }
+
+    .tag.warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border-color: rgba(245, 158, 11, 0.35);
+    }
+
     .tag.expired {
       background: rgba(239, 68, 68, 0.14);
       color: #fca5a5;
-      border-color: rgba(239, 68, 68, 0.35);
+      border-color: rgba(239, 68, 68, 0.3);
     }
+
     .otp-banner {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      background: var(--bg);
+      background: rgba(7, 10, 16, 0.65);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 14px;
+      border-radius: 12px;
+      padding: 12px 16px;
     }
+
     .otp-code {
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 1.7rem;
+      font-size: 1.75rem;
       font-weight: 800;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.2em;
       color: #60a5fa;
+      margin-top: 2px;
+      transition: opacity 0.2s, color 0.2s;
     }
-    .otp-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .otp-code.used {
+      color: var(--muted);
+      text-decoration: line-through;
+      opacity: 0.65;
+    }
+
+    .otp-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .text-box {
-      background: var(--bg);
+      background: rgba(7, 10, 16, 0.65);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
+      border-radius: 12px;
+      padding: 14px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
+
     .text-content {
       white-space: pre-wrap;
       word-break: break-word;
-      line-height: 1.45;
-      font-size: 0.94rem;
+      line-height: 1.5;
+      font-size: 0.93rem;
+      color: #e2e8f0;
     }
+
     .items-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
       gap: 12px;
     }
+
     .file-item {
-      background: var(--bg);
+      background: rgba(7, 10, 16, 0.65);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
+      border-radius: 12px;
+      padding: 13px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 9px;
     }
-    .file-title { font-weight: 600; font-size: 0.9rem; word-break: break-all; }
+
+    .file-title {
+      font-weight: 600;
+      font-size: 0.88rem;
+      word-break: break-all;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .file-meta {
-      font-size: 0.78rem;
+      font-size: 0.77rem;
       color: var(--muted);
       display: flex;
       justify-content: space-between;
+      font-variant-numeric: tabular-nums;
     }
+
     .progress-bar {
       height: 6px;
       background: var(--panel-2);
       border-radius: 999px;
       overflow: hidden;
     }
+
     .progress-fill {
       height: 100%;
       width: 0%;
-      background: linear-gradient(90deg, var(--accent), var(--green));
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      transition: width 0.08s linear;
     }
+
     .media-preview {
       width: 100%;
-      max-height: 240px;
+      max-height: 230px;
       object-fit: contain;
       border-radius: 8px;
       background: #000;
+      border: 1px solid var(--border);
     }
+
     a.dl-btn {
       display: inline-block;
+      width: 100%;
       text-align: center;
       text-decoration: none;
       background: var(--panel-2);
       color: var(--text);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 7px 10px;
-      font-size: 0.84rem;
+      padding: 8px 12px;
+      font-size: 0.83rem;
       font-weight: 600;
+      transition: background 0.15s;
     }
-    a.dl-btn:hover { background: #233046; }
+
+    a.dl-btn:hover { background: #1f2b42; }
+
     .empty-msg {
       text-align: center;
       color: var(--muted);
-      padding: 28px;
+      padding: 36px 20px;
       border: 1px dashed var(--border);
-      border-radius: 14px;
-      font-size: 0.92rem;
+      border-radius: 16px;
+      font-size: 0.9rem;
+      background: rgba(15, 21, 33, 0.4);
+    }
+
+    .retry-slot {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .retry-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.28);
+      border-radius: 12px;
+      padding: 12px 16px;
+      animation: slideIn 0.22s ease-out;
+      flex-wrap: wrap;
+    }
+
+    .retry-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .retry-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #fde68a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .retry-sub {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .retry-btn {
+      background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+      border-color: rgba(251, 191, 36, 0.5) !important;
+      color: #0b0f17 !important;
+      font-weight: 700 !important;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3) !important;
+      white-space: nowrap;
+    }
+
+    .retry-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+      box-shadow: 0 6px 18px rgba(245, 158, 11, 0.45) !important;
+      transform: translateY(-1px);
     }
   </style>
 </head>
 <body>
   <header>
-    <div class="brand">⚡ <span>WarpDrop</span> Online Clipboard</div>
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <span>WarpDrop</span>
+    </div>
     <div class="status-pill">
       <span id="netDot" class="dot"></span>
       <span id="netText">Connecting P2P network...</span>
@@ -363,62 +662,71 @@
     <div class="top-grid">
       <!-- SEND ROUND -->
       <section class="card">
-        <h2>
-          <span>📤 Send Round</span>
-          <span class="subtext">Generates fresh OTP</span>
-        </h2>
-        <textarea id="sendTextInput" placeholder="Paste text, links, or code for this round..."></textarea>
+        <div class="card-header">
+          <h2>📤 Send Round</h2>
+          <span class="badge-pill">Direct WebRTC • 256KB Turbo</span>
+        </div>
+        <textarea id="sendTextInput" placeholder="Paste text, links, or code snippets..."></textarea>
         <div id="dropzone" class="dropzone">
-          <strong>Drop files, images, or videos here</strong><br />
-          or click to browse • Ctrl+V / Cmd+V to paste images/files
+          <strong>Drop files, images, or videos here</strong>
+          Click to browse or press Ctrl+V / Cmd+V anywhere to paste
           <input id="fileInput" type="file" multiple hidden />
         </div>
         <div id="stagedList" class="staged-list"></div>
         <div class="row-between">
           <label class="checkbox-label">
             <input id="oneTimeCheck" type="checkbox" checked />
-            One-time OTP (auto-expire after download)
+            Expire OTP immediately once entered
           </label>
-          <button id="createRoundBtn" class="primary">Create Round OTP</button>
+          <button id="createRoundBtn" class="primary">Generate OTP</button>
         </div>
       </section>
 
       <!-- RECEIVE ROUND -->
       <section class="card">
-        <h2>
-          <span>📥 Receive Round</span>
-          <span class="subtext">Enter 6-digit OTP</span>
-        </h2>
+        <div class="card-header">
+          <h2>📥 Receive Round</h2>
+          <span class="badge-pill">6-Digit OTP</span>
+        </div>
         <p class="subtext">
-          Enter the round's OTP to stream its exact text, files, images, or videos directly from the sender.
+          Enter the sender's 6-digit code to stream text and files directly to your device.
         </p>
-        <input id="otpInput" class="otp-input" type="text" inputmode="numeric" maxlength="7" placeholder="000000" />
-        <button id="claimBtn" class="primary">Get Files for Round</button>
-        <div id="claimError" class="subtext" style="color: #fca5a5;"></div>
+        <div class="otp-boxes" id="otpBoxes">
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 1" />
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 2" />
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 3" />
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 4" />
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 5" />
+          <input class="otp-digit" type="text" inputmode="numeric" maxlength="1" aria-label="Digit 6" />
+        </div>
+        <button id="claimBtn" class="primary" style="width: 100%;">Connect & Receive</button>
+        <div id="claimError" class="error-msg"></div>
       </section>
     </div>
 
     <div class="section-title">
-      <span>Rounds (Newest Always at Top)</span>
+      <span>Active & Recent Rounds</span>
       <span id="roundCountLabel">0 rounds</span>
     </div>
 
     <div id="roundsFeed" class="rounds-feed">
       <div id="emptyMsg" class="empty-msg">
-        No rounds yet. Create a round on the left to get an OTP, or enter an OTP on the right to receive files.
+        No transfers yet. Create a round on the left to generate an OTP, or enter an OTP on the right.
       </div>
     </div>
   </main>
 
   <script>
     const PEER_PREFIX = 'warpdrop-round-';
-    const CHUNK_SIZE = 64 * 1024;
-    const MAX_BUFFERED = 4 * 1024 * 1024;
-    const LOW_BUFFERED = 1 * 1024 * 1024;
+    // High-throughput WebRTC SCTP settings
+    const CHUNK_SIZE = 256 * 1024;          // 256 KB per chunk (4x fewer overhead frames)
+    const MAX_BUFFERED = 16 * 1024 * 1024;  // 16 MB high watermark keeps pipe saturated
+    const LOW_BUFFERED = 4 * 1024 * 1024;   // 4 MB low watermark resumes early before empty
     const ICE_CONFIG = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' }
       ]
     };
 
@@ -430,7 +738,7 @@
     const stagedList = document.getElementById('stagedList');
     const oneTimeCheck = document.getElementById('oneTimeCheck');
     const createRoundBtn = document.getElementById('createRoundBtn');
-    const otpInput = document.getElementById('otpInput');
+    const otpDigits = Array.from(document.querySelectorAll('.otp-digit'));
     const claimBtn = document.getElementById('claimBtn');
     const claimError = document.getElementById('claimError');
     const roundsFeed = document.getElementById('roundsFeed');
@@ -445,6 +753,65 @@
     const outgoingRounds = new Map();
     const incomingRounds = new Map();
 
+    // OTP 6-Box Input UX
+    function getEnteredOtp() {
+      return otpDigits.map((el) => el.value.trim()).join('');
+    }
+
+    function setEnteredOtp(code) {
+      const clean = code.replace(/\D/g, '').slice(0, 6);
+      otpDigits.forEach((el, i) => {
+        el.value = clean[i] || '';
+      });
+    }
+
+    function clearOtpInputs() {
+      otpDigits.forEach((el) => (el.value = ''));
+    }
+
+    otpDigits.forEach((input, idx) => {
+      input.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/\D/g, '');
+        if (val.length > 1) {
+          setEnteredOtp(val);
+          const nextIdx = Math.min(5, val.length - 1);
+          otpDigits[nextIdx].focus();
+          if (getEnteredOtp().length === 6) claimRound();
+          return;
+        }
+        e.target.value = val;
+        if (val && idx < 5) {
+          otpDigits[idx + 1].focus();
+        }
+        if (getEnteredOtp().length === 6) {
+          claimRound();
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+          otpDigits[idx - 1].focus();
+        } else if (e.key === 'ArrowLeft' && idx > 0) {
+          otpDigits[idx - 1].focus();
+        } else if (e.key === 'ArrowRight' && idx < 5) {
+          otpDigits[idx + 1].focus();
+        } else if (e.key === 'Enter') {
+          claimRound();
+        }
+      });
+
+      input.addEventListener('paste', (e) => {
+        const pasted = (e.clipboardData?.getData('text') || '').replace(/\D/g, '');
+        if (pasted.length > 0) {
+          e.preventDefault();
+          setEnteredOtp(pasted);
+          const focusIdx = Math.min(5, pasted.length - 1);
+          otpDigits[focusIdx].focus();
+          if (getEnteredOtp().length === 6) claimRound();
+        }
+      });
+    });
+
     function formatBytes(bytes) {
       if (bytes === 0) return '0 B';
       const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -452,12 +819,24 @@
       return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 2) + ' ' + units[i];
     }
 
+    function getFileIcon(name) {
+      const ext = name.split('.').pop().toLowerCase();
+      if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) return '🖼️';
+      if (['mp4', 'mov', 'webm', 'mkv', 'avi'].includes(ext)) return '🎬';
+      if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(ext)) return '🎵';
+      if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return '📦';
+      if (['pdf', 'doc', 'docx', 'txt', 'md'].includes(ext)) return '📄';
+      return '📁';
+    }
+
     function formatOtp(otp) {
       return otp.length === 6 ? otp.slice(0, 3) + ' ' + otp.slice(3) : otp;
     }
 
     function generateOtp() {
-      return String(Math.floor(100000 + Math.random() * 900000));
+      const arr = new Uint32Array(1);
+      crypto.getRandomValues(arr);
+      return String(100000 + (arr[0] % 900000));
     }
 
     function prependRoundCard(card) {
@@ -467,7 +846,6 @@
       card.classList.add('latest');
       roundsFeed.prepend(card);
       roundCountLabel.textContent = roundCounter + (roundCounter === 1 ? ' round' : ' rounds');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     // Initialize receiver PeerJS client
@@ -482,11 +860,11 @@
 
       receiverPeer.on('open', () => {
         netDot.classList.add('online');
-        netText.textContent = 'P2P Network Ready';
+        netText.textContent = 'P2P Network Online';
 
         const urlOtp = new URLSearchParams(location.search).get('otp');
         if (urlOtp && /^\d{6}$/.test(urlOtp.trim()) && !incomingRounds.has(urlOtp.trim())) {
-          otpInput.value = urlOtp.trim();
+          setEnteredOtp(urlOtp.trim());
           claimRound(urlOtp.trim());
         }
       });
@@ -495,12 +873,10 @@
         if (err.type === 'peer-unavailable' && pendingClaimOtp) {
           const failedOtp = pendingClaimOtp;
           pendingClaimOtp = null;
-          claimError.textContent = 'Invalid, expired, or offline OTP (' + formatOtp(failedOtp) + ').';
+          claimError.textContent = 'OTP ' + formatOtp(failedOtp) + ' is offline, not found, or expired.';
           const r = incomingRounds.get(failedOtp);
           if (r) {
-            r.ui.statusTag.textContent = 'OTP not found / expired';
-            r.ui.statusTag.className = 'tag expired';
-            incomingRounds.delete(failedOtp);
+            handleIncomingRoundFailure(r, 'Sender is not online or OTP expired.');
           }
         } else if (err.type === 'network' || err.type === 'server-error') {
           netDot.classList.remove('online');
@@ -513,7 +889,7 @@
         netText.textContent = 'Disconnected — reconnecting...';
         setTimeout(() => {
           if (receiverPeer && !receiverPeer.destroyed) receiverPeer.reconnect();
-        }, 1500);
+        }, 1200);
       });
     }
 
@@ -530,7 +906,7 @@
         chip.className = 'staged-chip';
 
         const name = document.createElement('span');
-        name.textContent = file.name + ' (' + formatBytes(file.size) + ')';
+        name.textContent = getFileIcon(file.name) + ' ' + file.name + ' (' + formatBytes(file.size) + ')';
 
         const rm = document.createElement('button');
         rm.textContent = '×';
@@ -572,11 +948,11 @@
 
       const badge = document.createElement('div');
       badge.className = 'round-badge';
-      badge.textContent = '📤 Round #' + roundCounter + ' (Sending)';
+      badge.textContent = '📤 Outgoing Round #' + roundCounter;
 
       const statusTag = document.createElement('span');
       statusTag.className = 'tag';
-      statusTag.textContent = 'Registering OTP...';
+      statusTag.textContent = 'Generating OTP...';
       header.append(badge, statusTag);
 
       const banner = document.createElement('div');
@@ -586,10 +962,10 @@
       const lbl = document.createElement('div');
       lbl.className = 'subtext';
       const oneTime = oneTimeCheck.checked;
-      lbl.textContent = oneTime ? 'One-Time Round OTP' : 'Multi-Use Round OTP';
+      lbl.textContent = oneTime ? 'Single-Use OTP (Expires once delivered)' : 'Multi-Use Round OTP';
       const codeEl = document.createElement('div');
       codeEl.className = 'otp-code';
-      codeEl.textContent = '------';
+      codeEl.textContent = '--- ---';
       otpDisplay.append(lbl, codeEl);
 
       const otpActions = document.createElement('div');
@@ -605,7 +981,7 @@
 
       const closeBtn = document.createElement('button');
       closeBtn.className = 'danger';
-      closeBtn.textContent = 'Expire OTP';
+      closeBtn.textContent = 'Expire Now';
       closeBtn.disabled = true;
 
       otpActions.append(copyOtpBtn, copyLinkBtn, closeBtn);
@@ -634,6 +1010,10 @@
         card.appendChild(grid);
       }
 
+      const retrySlot = document.createElement('div');
+      retrySlot.className = 'retry-slot';
+      card.appendChild(retrySlot);
+
       prependRoundCard(card);
 
       const round = {
@@ -643,7 +1023,12 @@
         files,
         oneTime,
         claimed: false,
-        ui: { statusTag, codeEl, copyOtpBtn, copyLinkBtn, closeBtn, itemUIs }
+        completed: false,
+        interrupted: false,
+        expired: false,
+        activeConn: null,
+        currentStreamConn: null,
+        ui: { card, statusTag, codeEl, copyOtpBtn, copyLinkBtn, closeBtn, itemUIs, retrySlot }
       };
 
       bindRoundOtpPeer(round);
@@ -689,35 +1074,83 @@
       peer.on('error', (err) => {
         if (err.type === 'unavailable-id') {
           peer.destroy();
-          bindRoundOtpPeer(round); // Retry with a fresh 6-digit OTP
-        } else {
+          bindRoundOtpPeer(round);
+        } else if (!round.expired) {
           round.ui.statusTag.textContent = 'Error: ' + err.type;
           round.ui.statusTag.className = 'tag expired';
         }
       });
 
       peer.on('connection', (conn) => {
-        if (round.oneTime && round.claimed) {
+        if (round.expired) {
           conn.close();
           return;
         }
-        if (round.oneTime) round.claimed = true;
 
-        round.ui.statusTag.textContent = 'Receiver connected • Streaming...';
+        if (round.activeConn && round.activeConn.open && round.activeConn !== conn) {
+          try { round.activeConn.close(); } catch {}
+        }
+
+        round.activeConn = conn;
+        round.interrupted = false;
+        if (round.ui.retrySlot) round.ui.retrySlot.innerHTML = '';
+
+        round.ui.statusTag.textContent = 'Receiver Connected • Handshaking...';
+        round.ui.statusTag.className = 'tag';
 
         conn.on('open', () => {
           if (conn.dataChannel) {
             conn.dataChannel.binaryType = 'arraybuffer';
             conn.dataChannel.bufferedAmountLowThreshold = LOW_BUFFERED;
           }
-          streamOutgoingRound(round, conn);
+
+          // Send manifest to receiver
+          conn.send(JSON.stringify({
+            type: 'round-manifest',
+            otp: round.otp,
+            text: round.text,
+            files: round.files.map((f) => ({
+              name: f.name,
+              size: f.size,
+              mime: f.type || 'application/octet-stream'
+            }))
+          }));
+
+          // If no files (text only), round is immediately completed
+          if (round.files.length === 0) {
+            conn.send(JSON.stringify({ type: 'round-complete', otp: round.otp }));
+            round.completed = true;
+            if (round.oneTime) {
+              expireOutgoingRound(round, '✅ Delivered (OTP Expired)');
+            } else {
+              round.ui.statusTag.textContent = '✅ Delivered';
+              round.ui.statusTag.className = 'tag done';
+            }
+          }
         });
 
         conn.on('data', (raw) => {
           if (typeof raw === 'string') {
             try {
               const msg = JSON.parse(raw);
-              if (msg.type === 'ack-complete' && msg.otp === round.otp) {
+              if (msg.type === 'start-stream' && msg.otp === round.otp) {
+                const fromFileIndex = Math.max(0, parseInt(msg.fromFileIndex, 10) || 0);
+                const fromByteOffset = Math.max(0, parseInt(msg.fromByteOffset, 10) || 0);
+
+                if (fromFileIndex > 0 || fromByteOffset > 0) {
+                  const targetName = round.files[fromFileIndex]?.name || ('File #' + (fromFileIndex + 1));
+                  round.ui.statusTag.textContent = 'Resuming ' + targetName +
+                    (fromByteOffset > 0 ? (' from ' + formatBytes(fromByteOffset)) : '') + '...';
+                } else {
+                  round.ui.statusTag.textContent = 'Streaming Transfer...';
+                }
+                round.ui.statusTag.className = 'tag';
+                streamOutgoingRound(round, conn, fromFileIndex, fromByteOffset);
+
+              } else if (msg.type === 'ack-complete' && msg.otp === round.otp) {
+                round.completed = true;
+                round.interrupted = false;
+                if (round.ui.retrySlot) round.ui.retrySlot.innerHTML = '';
                 if (round.oneTime) {
                   expireOutgoingRound(round, '✅ Delivered (OTP Expired)');
                 } else {
@@ -725,57 +1158,116 @@
                   round.ui.statusTag.className = 'tag done';
                 }
               }
-            } catch {}
+            } catch (err) {
+              console.error('Sender JSON error:', err);
+            }
           }
         });
 
         conn.on('close', () => {
-          if (round.oneTime && round.ui.statusTag.textContent.includes('Streaming')) {
-            round.claimed = false;
-            round.ui.statusTag.textContent = 'Receiver left • Waiting again...';
+          if (!round.completed && !round.expired) {
+            handleOutgoingRoundInterrupted(round, 'Receiver connection closed before completion.');
+          }
+        });
+
+        conn.on('error', (err) => {
+          if (!round.completed && !round.expired) {
+            handleOutgoingRoundInterrupted(round, 'Connection error: ' + (err?.message || 'interrupted'));
           }
         });
       });
     }
 
-    function expireOutgoingRound(round, label) {
-      outgoingRounds.delete(round.otp);
-      try { round.peer?.destroy(); } catch {}
-      round.ui.statusTag.textContent = label;
-      round.ui.statusTag.className = 'tag done';
-      round.ui.closeBtn.disabled = true;
+    function handleOutgoingRoundInterrupted(round, reason) {
+      if (round.completed || round.expired) return;
+      round.interrupted = true;
+      round.currentStreamConn = null;
+      round.ui.statusTag.textContent = '⚠️ Transfer Paused';
+      round.ui.statusTag.className = 'tag warning';
+
+      // Ensure peer is listening on signaling so receiver can reconnect
+      if (round.peer && !round.peer.destroyed && round.peer.disconnected) {
+        try { round.peer.reconnect(); } catch {}
+      }
+
+      // Re-enable OTP UI so sender knows it can still be used
+      round.ui.codeEl.classList.remove('used');
+      round.ui.copyOtpBtn.disabled = false;
+      round.ui.copyLinkBtn.disabled = false;
+
+      if (round.ui.retrySlot) {
+        round.ui.retrySlot.innerHTML = '';
+        const banner = document.createElement('div');
+        banner.className = 'retry-banner';
+
+        const info = document.createElement('div');
+        info.className = 'retry-info';
+
+        const title = document.createElement('span');
+        title.className = 'retry-title';
+        title.textContent = '⚠️ Transfer Paused';
+
+        const sub = document.createElement('span');
+        sub.className = 'retry-sub';
+        sub.textContent = `${reason} Keep this window open — receiver can retry and resume from where it was left.`;
+
+        info.append(title, sub);
+        banner.appendChild(info);
+        round.ui.retrySlot.appendChild(banner);
+      }
     }
 
-    async function streamOutgoingRound(round, conn) {
+    function expireOutgoingRound(round, label) {
+      if (round.expired) return;
+      round.expired = true;
+      round.interrupted = false;
+      outgoingRounds.delete(round.otp);
+      round.ui.codeEl.classList.add('used');
+      round.ui.copyOtpBtn.disabled = true;
+      round.ui.copyLinkBtn.disabled = true;
+      round.ui.closeBtn.disabled = true;
+      if (round.ui.retrySlot) round.ui.retrySlot.innerHTML = '';
+      round.ui.statusTag.textContent = label;
+      round.ui.statusTag.className = label.includes('✅') ? 'tag done' : 'tag expired';
+      try { round.peer?.destroy(); } catch {}
+    }
+
+    async function streamOutgoingRound(round, conn, fromFileIndex = 0, fromByteOffset = 0) {
       const dc = conn.dataChannel;
+      round.currentStreamConn = conn;
 
-      conn.send(JSON.stringify({
-        type: 'round-manifest',
-        otp: round.otp,
-        text: round.text,
-        files: round.files.map((f) => ({
-          name: f.name,
-          size: f.size,
-          mime: f.type || 'application/octet-stream'
-        }))
-      }));
+      // Mark any earlier files as already sent in UI
+      for (let k = 0; k < fromFileIndex; k++) {
+        const prevUi = round.ui.itemUIs[k];
+        if (prevUi) updateFileBoxProgress(prevUi, 100, 'Sent');
+      }
 
-      for (let i = 0; i < round.files.length; i++) {
+      for (let i = fromFileIndex; i < round.files.length; i++) {
+        if (!conn.open || round.currentStreamConn !== conn || round.interrupted) return;
+
         const file = round.files[i];
         const ui = round.ui.itemUIs[i];
+        const startOffset = (i === fromFileIndex) ? fromByteOffset : 0;
         const startTime = performance.now();
+        let lastUiUpdate = 0;
 
         conn.send(JSON.stringify({
           type: 'file-start',
           index: i,
           name: file.name,
           size: file.size,
-          mime: file.type || 'application/octet-stream'
+          mime: file.type || 'application/octet-stream',
+          offset: startOffset
         }));
 
-        let offset = 0;
+        let offset = startOffset;
+        // Pre-read first chunk
+        let nextChunkPromise = offset < file.size
+          ? file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size)).arrayBuffer()
+          : null;
+
         while (offset < file.size) {
-          if (!conn.open) return;
+          if (!conn.open || round.currentStreamConn !== conn || round.interrupted) return;
 
           if (dc && dc.bufferedAmount > MAX_BUFFERED) {
             await new Promise((resolve) => {
@@ -787,43 +1279,73 @@
               conn.once('close', done);
             });
           }
-          if (!conn.open) return;
+          if (!conn.open || round.currentStreamConn !== conn || round.interrupted) return;
 
-          const buffer = await file.slice(offset, offset + CHUNK_SIZE).arrayBuffer();
-          conn.send(buffer);
+          const buffer = await nextChunkPromise;
           offset += buffer.byteLength;
 
-          const pct = file.size > 0 ? (offset / file.size) * 100 : 100;
-          const elapsed = Math.max((performance.now() - startTime) / 1000, 0.001);
-          updateFileBoxProgress(ui, pct, formatBytes(offset / elapsed) + '/s');
+          // Pipeline next disk read concurrently while sending current buffer
+          if (offset < file.size) {
+            nextChunkPromise = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size)).arrayBuffer();
+          }
+
+          conn.send(buffer);
+
+          const now = performance.now();
+          if (now - lastUiUpdate > 60 || offset >= file.size) {
+            lastUiUpdate = now;
+            const pct = file.size > 0 ? (offset / file.size) * 100 : 100;
+            const bytesThisSession = offset - startOffset;
+            const elapsed = Math.max((now - startTime) / 1000, 0.001);
+            const speed = bytesThisSession > 0 ? formatBytes(bytesThisSession / elapsed) + '/s' : '';
+            updateFileBoxProgress(ui, pct, speed);
+          }
         }
+
+        if (!conn.open || round.currentStreamConn !== conn || round.interrupted) return;
 
         conn.send(JSON.stringify({ type: 'file-end', index: i }));
         const elapsed = Math.max((performance.now() - startTime) / 1000, 0.001);
-        updateFileBoxProgress(ui, 100, 'Sent • ' + formatBytes(file.size / elapsed) + '/s');
+        const bytesThisSession = file.size - startOffset;
+        const speed = bytesThisSession > 0 ? formatBytes(bytesThisSession / elapsed) + '/s' : '';
+        updateFileBoxProgress(ui, 100, 'Sent • ' + speed);
       }
 
-      if (conn.open) {
+      if (conn.open && round.currentStreamConn === conn && !round.interrupted) {
         conn.send(JSON.stringify({ type: 'round-complete', otp: round.otp }));
-        round.ui.statusTag.textContent = '✅ Delivered';
-        round.ui.statusTag.className = 'tag done';
+        if (!round.oneTime) {
+          round.ui.statusTag.textContent = '✅ Delivered';
+          round.ui.statusTag.className = 'tag done';
+        }
       }
     }
 
     // Claim Incoming Round
     function claimRound(rawOtp) {
       if (!receiverPeer || !receiverPeer.open) {
-        claimError.textContent = 'Still connecting to P2P network, try again in a second...';
+        if (receiverPeer && receiverPeer.disconnected) {
+          receiverPeer.reconnect();
+        }
+        claimError.textContent = 'Connecting to P2P network, please try again in a moment...';
         return;
       }
 
-      const otp = (rawOtp || otpInput.value).replace(/\s+/g, '');
+      const otp = (rawOtp || getEnteredOtp()).replace(/\s+/g, '');
       if (!/^\d{6}$/.test(otp)) {
-        claimError.textContent = 'Please enter a valid 6-digit OTP.';
+        claimError.textContent = 'Please enter all 6 digits of the OTP.';
         return;
       }
+
       if (incomingRounds.has(otp)) {
-        claimError.textContent = 'You already claimed this round.';
+        const existing = incomingRounds.get(otp);
+        if (existing.completed) {
+          claimError.textContent = 'You already claimed and completed this round.';
+          return;
+        }
+        // Round exists and was interrupted or failed: Retry and resume it!
+        claimError.textContent = '';
+        clearOtpInputs();
+        retryIncomingRound(existing);
         return;
       }
 
@@ -839,137 +1361,358 @@
 
       const badge = document.createElement('div');
       badge.className = 'round-badge';
-      badge.textContent = '📥 Round #' + roundCounter + ' • OTP ' + formatOtp(otp);
+      badge.textContent = '📥 Incoming Round #' + roundCounter + ' • ' + formatOtp(otp);
 
       const statusTag = document.createElement('span');
       statusTag.className = 'tag';
       statusTag.textContent = 'Connecting P2P...';
       header.append(badge, statusTag);
 
+      const retrySlot = document.createElement('div');
+      retrySlot.className = 'retry-slot';
+
       const contentSlot = document.createElement('div');
       contentSlot.style.display = 'flex';
       contentSlot.style.flexDirection = 'column';
       contentSlot.style.gap = '10px';
 
-      card.append(header, contentSlot);
+      card.append(header, retrySlot, contentSlot);
       prependRoundCard(card);
 
       const r = {
         otp,
         roundNum: roundCounter,
-        ui: { statusTag, contentSlot },
+        card,
+        ui: { statusTag, retrySlot, contentSlot },
         itemUIs: [],
+        manifestFiles: [],
+        completedFileIndices: new Set(),
         incomingFile: null,
-        dlUrls: []
+        dlUrls: [],
+        lastUiUpdate: 0,
+        completed: false,
+        failed: false,
+        isRetrying: false,
+        hasTextRendered: false,
+        hasDownloadAllBtn: false,
+        conn: null,
+        connectTimer: null
       };
-      incomingRounds.set(otp, r);
-      otpInput.value = '';
 
-      const conn = receiverPeer.connect(PEER_PREFIX + otp, {
+      incomingRounds.set(otp, r);
+      clearOtpInputs();
+
+      connectToSender(r);
+    }
+
+    function connectToSender(r) {
+      if (!receiverPeer || receiverPeer.destroyed) {
+        initReceiverPeer();
+      } else if (receiverPeer.disconnected) {
+        receiverPeer.reconnect();
+      }
+
+      r.isRetrying = true;
+      r.failed = false;
+      r.ui.statusTag.textContent = 'Connecting to sender...';
+      r.ui.statusTag.className = 'tag';
+      if (r.ui.retrySlot) r.ui.retrySlot.innerHTML = '';
+
+      if (r.conn) {
+        try { r.conn.close(); } catch {}
+        r.conn = null;
+      }
+
+      clearTimeout(r.connectTimer);
+      // Timeout after 14 seconds if connection cannot be established
+      r.connectTimer = setTimeout(() => {
+        if (!r.completed && (!r.conn || !r.conn.open)) {
+          handleIncomingRoundFailure(r, 'Connection timed out. Sender may be offline or OTP expired.');
+        }
+      }, 14000);
+
+      const conn = receiverPeer.connect(PEER_PREFIX + r.otp, {
         reliable: true,
         serialization: 'raw'
       });
+      r.conn = conn;
 
       conn.on('open', () => {
-        if (pendingClaimOtp === otp) pendingClaimOtp = null;
+        clearTimeout(r.connectTimer);
+        r.isRetrying = false;
+        if (pendingClaimOtp === r.otp) pendingClaimOtp = null;
         if (conn.dataChannel) conn.dataChannel.binaryType = 'arraybuffer';
-        r.ui.statusTag.textContent = 'P2P Connected • Receiving...';
+        r.ui.statusTag.textContent = 'Connected • Synchronizing...';
       });
 
       conn.on('data', (data) => {
-        if (typeof data === 'string') {
-          const msg = JSON.parse(data);
+        handleIncomingData(r, conn, data);
+      });
 
-          if (msg.type === 'round-manifest') {
-            if (msg.otp !== otp) {
-              r.ui.statusTag.textContent = 'OTP mismatch rejected!';
-              r.ui.statusTag.className = 'tag expired';
-              conn.close();
-              return;
+      conn.on('close', () => {
+        clearTimeout(r.connectTimer);
+        r.isRetrying = false;
+        if (!r.completed) {
+          handleIncomingRoundFailure(r, 'Connection closed before transfer finished.');
+        }
+      });
+
+      conn.on('error', (err) => {
+        clearTimeout(r.connectTimer);
+        r.isRetrying = false;
+        if (!r.completed) {
+          handleIncomingRoundFailure(r, 'Transfer error: ' + (err?.message || 'connection failed'));
+        }
+      });
+    }
+
+    function retryIncomingRound(r) {
+      if (r.completed) return;
+      if (r.isRetrying && r.conn && r.conn.open) return;
+
+      // Highlight card as latest
+      const prevLatest = roundsFeed.querySelector('.round-card.latest');
+      if (prevLatest && prevLatest !== r.card) prevLatest.classList.remove('latest');
+      r.card.classList.add('latest');
+
+      connectToSender(r);
+    }
+
+    function handleIncomingData(r, conn, data) {
+      if (typeof data === 'string') {
+        let msg;
+        try {
+          msg = JSON.parse(data);
+        } catch {
+          return;
+        }
+
+        if (msg.type === 'round-manifest') {
+          if (msg.otp !== r.otp) {
+            r.ui.statusTag.textContent = 'OTP mismatch rejected!';
+            r.ui.statusTag.className = 'tag expired';
+            conn.close();
+            return;
+          }
+
+          r.manifestFiles = msg.files || [];
+
+          // Render text if not already rendered
+          if (msg.text && !r.hasTextRendered) {
+            r.hasTextRendered = true;
+            const tBox = document.createElement('div');
+            tBox.className = 'text-box';
+            const t = document.createElement('div');
+            t.className = 'text-content';
+            t.textContent = msg.text;
+
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = '📋 Copy Text';
+            copyBtn.style.alignSelf = 'flex-start';
+            copyBtn.onclick = () => {
+              navigator.clipboard.writeText(msg.text);
+              copyBtn.textContent = '✅ Copied!';
+              setTimeout(() => (copyBtn.textContent = '📋 Copy Text'), 1200);
+            };
+            tBox.append(t, copyBtn);
+            r.ui.contentSlot.appendChild(tBox);
+          }
+
+          // Render file boxes if not already rendered
+          if (r.manifestFiles.length > 0 && r.itemUIs.length === 0) {
+            const grid = document.createElement('div');
+            grid.className = 'items-grid';
+            for (const f of r.manifestFiles) {
+              const box = createFileBox(f.name, f.size);
+              grid.appendChild(box.el);
+              r.itemUIs.push(box);
             }
+            r.ui.contentSlot.appendChild(grid);
+          }
 
-            if (msg.text) {
-              const tBox = document.createElement('div');
-              tBox.className = 'text-box';
-              const t = document.createElement('div');
-              t.className = 'text-content';
-              t.textContent = msg.text;
+          // Determine resume position!
+          let resumeIndex = 0;
+          let resumeOffset = 0;
 
-              const copyBtn = document.createElement('button');
-              copyBtn.textContent = '📋 Copy Text';
-              copyBtn.style.alignSelf = 'flex-start';
-              copyBtn.onclick = () => {
-                navigator.clipboard.writeText(msg.text);
-                copyBtn.textContent = '✅ Copied!';
-                setTimeout(() => (copyBtn.textContent = '📋 Copy Text'), 1200);
-              };
-              tBox.append(t, copyBtn);
-              r.ui.contentSlot.appendChild(tBox);
-            }
-
-            if (msg.files && msg.files.length > 0) {
-              const grid = document.createElement('div');
-              grid.className = 'items-grid';
-              for (const f of msg.files) {
-                const box = createFileBox(f.name, f.size);
-                grid.appendChild(box.el);
-                r.itemUIs.push(box);
+          if (r.incomingFile && r.incomingFile.received > 0 && r.incomingFile.received < r.incomingFile.size) {
+            // A file was partially downloaded: resume from this file and offset!
+            resumeIndex = r.incomingFile.index;
+            resumeOffset = r.incomingFile.received;
+          } else {
+            // Find first file index not in completedFileIndices
+            let found = false;
+            for (let i = 0; i < r.manifestFiles.length; i++) {
+              if (!r.completedFileIndices.has(i)) {
+                resumeIndex = i;
+                resumeOffset = 0;
+                found = true;
+                break;
               }
-              r.ui.contentSlot.appendChild(grid);
             }
-          } else if (msg.type === 'file-start') {
+            if (!found) {
+              resumeIndex = r.manifestFiles.length;
+              resumeOffset = 0;
+            }
+          }
+
+          if (resumeIndex > 0 || resumeOffset > 0) {
+            const targetFile = r.manifestFiles[resumeIndex];
+            const name = targetFile ? targetFile.name : ('File #' + (resumeIndex + 1));
+            r.ui.statusTag.textContent = 'Resuming ' + name + (resumeOffset > 0 ? (' from ' + formatBytes(resumeOffset)) : '') + '...';
+          } else {
+            r.ui.statusTag.textContent = 'Connected • Receiving...';
+          }
+          r.ui.statusTag.className = 'tag';
+
+          // Tell sender where to begin streaming!
+          conn.send(JSON.stringify({
+            type: 'start-stream',
+            otp: r.otp,
+            fromFileIndex: resumeIndex,
+            fromByteOffset: resumeOffset
+          }));
+
+        } else if (msg.type === 'file-start') {
+          const fIndex = msg.index;
+          const fOffset = msg.offset || 0;
+
+          if (r.incomingFile && r.incomingFile.index === fIndex && fOffset > 0 && r.incomingFile.received === fOffset) {
+            // Resuming existing partially received file!
+            r.incomingFile.startTime = performance.now();
+            r.incomingFile.initialOffset = fOffset;
+          } else {
+            // New file or starting fresh from offset
             r.incomingFile = {
-              index: msg.index,
+              index: fIndex,
               name: msg.name,
               size: msg.size,
               mime: msg.mime,
               chunks: [],
-              received: 0,
+              received: fOffset,
+              initialOffset: fOffset,
               startTime: performance.now()
             };
-          } else if (msg.type === 'file-end' && r.incomingFile) {
-            const f = r.incomingFile;
-            const ui = r.itemUIs[f.index];
-            const blob = new Blob(f.chunks, { type: f.mime || 'application/octet-stream' });
-            const url = URL.createObjectURL(blob);
-            r.dlUrls.push({ url, name: f.name });
-
-            const elapsed = Math.max((performance.now() - f.startTime) / 1000, 0.001);
-            finalizeIncomingFileBox(ui, url, f.name, f.mime, formatBytes(f.size / elapsed) + '/s');
-            r.incomingFile = null;
-          } else if (msg.type === 'round-complete' && msg.otp === otp) {
-            r.ui.statusTag.textContent = '✅ Verified & Received';
-            r.ui.statusTag.className = 'tag done';
-
-            if (r.dlUrls.length > 1) {
-              const dlAllBtn = document.createElement('button');
-              dlAllBtn.className = 'primary';
-              dlAllBtn.textContent = '⬇ Download All (' + r.dlUrls.length + ' files)';
-              dlAllBtn.style.alignSelf = 'flex-start';
-              dlAllBtn.onclick = () => {
-                r.dlUrls.forEach((item, idx) => {
-                  setTimeout(() => {
-                    const a = document.createElement('a');
-                    a.href = item.url;
-                    a.download = item.name;
-                    a.click();
-                  }, idx * 200);
-                });
-              };
-              r.ui.contentSlot.appendChild(dlAllBtn);
-            }
-
-            conn.send(JSON.stringify({ type: 'ack-complete', otp }));
           }
-        } else if (r.incomingFile) {
+
+          const ui = r.itemUIs[fIndex];
+          if (ui) {
+            const pct = msg.size > 0 ? (r.incomingFile.received / msg.size) * 100 : 0;
+            updateFileBoxProgress(ui, pct, fOffset > 0 ? ('Resuming from ' + formatBytes(fOffset)) : 'Receiving...');
+          }
+
+        } else if (msg.type === 'file-end' && r.incomingFile) {
           const f = r.incomingFile;
-          f.chunks.push(data);
-          f.received += data.byteLength ?? data.size ?? 0;
-          const pct = f.size > 0 ? Math.min(100, (f.received / f.size) * 100) : 100;
+          const ui = r.itemUIs[f.index];
+          const blob = new Blob(f.chunks, { type: f.mime || 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          r.dlUrls.push({ url, name: f.name, index: f.index });
+          r.completedFileIndices.add(f.index);
+
           const elapsed = Math.max((performance.now() - f.startTime) / 1000, 0.001);
-          updateFileBoxProgress(r.itemUIs[f.index], pct, formatBytes(f.received / elapsed) + '/s');
+          const bytesThisSession = f.size - (f.initialOffset || 0);
+          const speed = bytesThisSession > 0 ? formatBytes(bytesThisSession / elapsed) + '/s' : '';
+          finalizeIncomingFileBox(ui, url, f.name, f.mime, speed);
+          r.incomingFile = null;
+
+        } else if (msg.type === 'round-complete' && msg.otp === r.otp) {
+          r.completed = true;
+          r.failed = false;
+          r.ui.statusTag.textContent = '✅ Verified & Received';
+          r.ui.statusTag.className = 'tag done';
+          if (r.ui.retrySlot) r.ui.retrySlot.innerHTML = '';
+
+          if (r.dlUrls.length > 1 && !r.hasDownloadAllBtn) {
+            r.hasDownloadAllBtn = true;
+            const dlAllBtn = document.createElement('button');
+            dlAllBtn.className = 'primary';
+            dlAllBtn.textContent = '⬇ Download All (' + r.dlUrls.length + ' files)';
+            dlAllBtn.style.alignSelf = 'flex-start';
+            dlAllBtn.onclick = () => {
+              r.dlUrls.forEach((item, idx) => {
+                setTimeout(() => {
+                  const a = document.createElement('a');
+                  a.href = item.url;
+                  a.download = item.name;
+                  a.click();
+                }, idx * 200);
+              });
+            };
+            r.ui.contentSlot.appendChild(dlAllBtn);
+          }
+
+          conn.send(JSON.stringify({ type: 'ack-complete', otp: r.otp }));
         }
-      });
+
+      } else if (r.incomingFile) {
+        // Raw chunk
+        const f = r.incomingFile;
+        f.chunks.push(data);
+        f.received += data.byteLength ?? data.size ?? 0;
+
+        const now = performance.now();
+        if (now - r.lastUiUpdate > 60 || f.received >= f.size) {
+          r.lastUiUpdate = now;
+          const pct = f.size > 0 ? Math.min(100, (f.received / f.size) * 100) : 100;
+          const bytesThisSession = f.received - (f.initialOffset || 0);
+          const elapsed = Math.max((now - f.startTime) / 1000, 0.001);
+          const speed = bytesThisSession > 0 ? formatBytes(bytesThisSession / elapsed) + '/s' : '';
+          updateFileBoxProgress(r.itemUIs[f.index], pct, speed);
+        }
+      }
+    }
+
+    function handleIncomingRoundFailure(r, reason) {
+      if (r.completed) return;
+      r.failed = true;
+      r.isRetrying = false;
+      clearTimeout(r.connectTimer);
+
+      if (r.conn) {
+        try { r.conn.close(); } catch {}
+        r.conn = null;
+      }
+
+      r.ui.statusTag.textContent = '⚠️ Transfer Interrupted';
+      r.ui.statusTag.className = 'tag warning';
+
+      let progressInfo = '';
+      if (r.incomingFile && r.incomingFile.size > 0) {
+        const pct = ((r.incomingFile.received / r.incomingFile.size) * 100).toFixed(0);
+        progressInfo = `Paused at ${pct}% of "${r.incomingFile.name}" (${formatBytes(r.incomingFile.received)} of ${formatBytes(r.incomingFile.size)}).`;
+        const ui = r.itemUIs[r.incomingFile.index];
+        if (ui) {
+          updateFileBoxProgress(ui, parseFloat(pct), 'Paused at ' + formatBytes(r.incomingFile.received));
+        }
+      } else if (r.completedFileIndices.size > 0 && r.manifestFiles.length > 0) {
+        progressInfo = `Saved ${r.completedFileIndices.size} of ${r.manifestFiles.length} files before interruption.`;
+      }
+
+      if (r.ui.retrySlot) {
+        r.ui.retrySlot.innerHTML = '';
+        const banner = document.createElement('div');
+        banner.className = 'retry-banner';
+
+        const info = document.createElement('div');
+        info.className = 'retry-info';
+
+        const title = document.createElement('span');
+        title.className = 'retry-title';
+        title.textContent = '⚠️ Transfer Interrupted';
+
+        const sub = document.createElement('span');
+        sub.className = 'retry-sub';
+        sub.textContent = `${reason} ${progressInfo} Click below to retry and resume from where it was left.`;
+
+        info.append(title, sub);
+
+        const btn = document.createElement('button');
+        btn.className = 'primary retry-btn';
+        btn.textContent = '🔄 Retry & Resume';
+        btn.onclick = () => retryIncomingRound(r);
+
+        banner.append(info, btn);
+        r.ui.retrySlot.appendChild(banner);
+      }
     }
 
     // Shared File Box UI
@@ -979,7 +1722,7 @@
 
       const title = document.createElement('div');
       title.className = 'file-title';
-      title.textContent = name;
+      title.textContent = getFileIcon(name) + ' ' + name;
 
       const meta = document.createElement('div');
       meta.className = 'file-meta';
@@ -1032,16 +1775,13 @@
       a.className = 'dl-btn';
       a.href = url;
       a.download = name;
-      a.textContent = '⬇ Download';
+      a.textContent = '⬇ Download File';
       ui.actionSlot.appendChild(a);
     }
 
     // Event Listeners
     createRoundBtn.onclick = createRound;
     claimBtn.onclick = () => claimRound();
-    otpInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') claimRound();
-    });
 
     dropzone.onclick = () => fileInput.click();
     fileInput.onchange = () => {
@@ -1066,6 +1806,7 @@
     });
 
     window.addEventListener('paste', (e) => {
+      if (document.activeElement?.classList.contains('otp-digit')) return;
       const files = [];
       for (const item of e.clipboardData?.items || []) {
         if (item.kind === 'file') {
